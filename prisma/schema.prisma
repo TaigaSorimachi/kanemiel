@@ -1,0 +1,282 @@
+// =============================================================================
+// カネミエル (KANEMIEL) — Prisma Schema
+// 建設業向け現場キャッシュフロー管理システム
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// Enums
+// -----------------------------------------------------------------------------
+
+enum Role {
+  OWNER
+  ACCOUNTING
+  FOREMAN
+}
+
+enum ProjectStatus {
+  ACTIVE
+  COMPLETED
+  PAUSED
+}
+
+enum ClientType {
+  GENERAL_CONTRACTOR
+  SUBCONTRACTOR
+}
+
+enum IncomeType {
+  PROGRESS
+  ADVANCE
+  FINAL
+}
+
+enum IncomeScheduleStatus {
+  SCHEDULED
+  RECEIVED
+  OVERDUE
+}
+
+enum PaymentCategory {
+  SUBCONTRACTING
+  MATERIAL
+  EQUIPMENT
+  TRANSPORT
+  OTHER
+}
+
+enum PaymentRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
+enum ApprovalAction {
+  APPROVED
+  REJECTED
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum NotificationType {
+  APPROVAL_REQUEST
+  DANGER_ALERT
+  DAILY_SUMMARY
+  OVERDUE
+}
+
+// -----------------------------------------------------------------------------
+// Models
+// -----------------------------------------------------------------------------
+
+/// 会社
+model Company {
+  id          String   @id @default(uuid())
+  name        String
+  bankBalance Decimal  @default(0) @map("bank_balance") @db.Decimal(15, 0)
+  dangerLine  Decimal  @default(2000000) @map("danger_line") @db.Decimal(15, 0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  users    User[]
+  projects Project[]
+  clients  Client[]
+
+  @@map("companies")
+}
+
+/// ユーザー
+model User {
+  id               String  @id @default(uuid())
+  companyId        String  @map("company_id")
+  name             String
+  role             Role
+  lineUserId       String  @unique @map("line_user_id")
+  lineNotification Boolean @default(true) @map("line_notification")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  // Relations
+  company          Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  foremanProjects  Project[]        @relation("ProjectForeman")
+  paymentRequests  PaymentRequest[] @relation("PaymentRequester")
+  approvalLogs     ApprovalLog[]    @relation("ApprovalApprover")
+  notifications    Notification[]
+
+  @@index([companyId])
+  @@index([role])
+  @@map("users")
+}
+
+/// 現場
+model Project {
+  id             String        @id @default(uuid())
+  companyId      String        @map("company_id")
+  name           String
+  clientId       String        @map("client_id")
+  contractAmount Decimal       @map("contract_amount") @db.Decimal(15, 0)
+  status         ProjectStatus @default(ACTIVE)
+  foremanId      String        @map("foreman_id")
+  startDate      DateTime      @map("start_date") @db.Date
+  endDate        DateTime?     @map("end_date") @db.Date
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  client          Client           @relation("ProjectClient", fields: [clientId], references: [id], onDelete: Restrict)
+  foreman         User             @relation("ProjectForeman", fields: [foremanId], references: [id], onDelete: Restrict)
+  incomeSchedules IncomeSchedule[]
+  paymentRequests PaymentRequest[]
+  transactions    Transaction[]
+
+  @@index([companyId])
+  @@index([status])
+  @@index([foremanId])
+  @@index([clientId])
+  @@map("projects")
+}
+
+/// 取引先
+model Client {
+  id           String     @id @default(uuid())
+  companyId    String     @map("company_id")
+  name         String
+  type         ClientType
+  paymentTerms String?    @map("payment_terms")
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  // Relations
+  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  projects        Project[]        @relation("ProjectClient")
+  incomeSchedules IncomeSchedule[]
+  paymentRequests PaymentRequest[]
+  transactions    Transaction[]
+
+  @@index([companyId])
+  @@index([type])
+  @@map("clients")
+}
+
+/// 入金予定
+model IncomeSchedule {
+  id            String               @id @default(uuid())
+  projectId     String               @map("project_id")
+  clientId      String               @map("client_id")
+  amount        Decimal              @db.Decimal(15, 0)
+  scheduledDate DateTime             @map("scheduled_date") @db.Date
+  incomeType    IncomeType           @map("income_type")
+  status        IncomeScheduleStatus @default(SCHEDULED)
+  actualDate    DateTime?            @map("actual_date") @db.Date
+  createdAt     DateTime             @default(now()) @map("created_at")
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  client  Client  @relation(fields: [clientId], references: [id], onDelete: Restrict)
+
+  @@index([projectId])
+  @@index([status])
+  @@index([scheduledDate])
+  @@map("income_schedules")
+}
+
+/// 支払申請
+model PaymentRequest {
+  id          String               @id @default(uuid())
+  projectId   String               @map("project_id")
+  requesterId String               @map("requester_id")
+  clientId    String               @map("client_id")
+  amount      Decimal              @db.Decimal(15, 0)
+  category    PaymentCategory
+  desiredDate DateTime             @map("desired_date") @db.Date
+  status      PaymentRequestStatus @default(PENDING)
+  note        String?
+  photoUrl    String?              @map("photo_url")
+  createdAt   DateTime             @default(now()) @map("created_at")
+
+  // Relations
+  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requester    User          @relation("PaymentRequester", fields: [requesterId], references: [id], onDelete: Restrict)
+  client       Client        @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  approvalLogs ApprovalLog[]
+
+  @@index([projectId])
+  @@index([status])
+  @@index([requesterId])
+  @@index([desiredDate])
+  @@map("payment_requests")
+}
+
+/// 承認履歴
+model ApprovalLog {
+  id         String         @id @default(uuid())
+  requestId  String         @map("request_id")
+  approverId String         @map("approver_id")
+  action     ApprovalAction
+  comment    String?
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  // Relations
+  request  PaymentRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  approver User           @relation("ApprovalApprover", fields: [approverId], references: [id], onDelete: Restrict)
+
+  @@index([requestId])
+  @@index([approverId])
+  @@map("approval_logs")
+}
+
+/// 入出金実績
+model Transaction {
+  id          String          @id @default(uuid())
+  projectId   String          @map("project_id")
+  type        TransactionType
+  amount      Decimal         @db.Decimal(15, 0)
+  date        DateTime        @db.Date
+  category    String
+  clientId    String?         @map("client_id")
+  description String?
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  client  Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@index([type])
+  @@index([date])
+  @@index([clientId])
+  @@map("transactions")
+}
+
+/// 通知
+model Notification {
+  id          String           @id @default(uuid())
+  userId      String           @map("user_id")
+  type        NotificationType
+  title       String
+  message     String
+  isRead      Boolean          @default(false) @map("is_read")
+  linkUrl     String?          @map("link_url")
+  sentViaLine Boolean          @default(false) @map("sent_via_line")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([type])
+  @@map("notifications")
+}
