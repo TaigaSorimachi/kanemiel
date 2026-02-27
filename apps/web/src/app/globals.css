@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand Colors */
+  --color-navy: #0C1929;
+  --color-navy-mid: #162544;
+  --color-navy-light: #1E3355;
+  --color-gold: #C9A84C;
+  --color-gold-light: #E8D48B;
+  --color-gold-dark: #9A7B2E;
+  --color-success: #22B573;
+  --color-success-bg: #EDFCF4;
+  --color-warning: #E5A117;
+  --color-warning-bg: #FEF8E7;
+  --color-danger: #E04343;
+  --color-danger-bg: #FEF0F0;
+  --color-bg: #F4F6FA;
+  --color-card: #FFFFFF;
+  --color-sub: #6B7A90;
+  --color-border: #E4E9F1;
+
+  /* Custom Animations */
+  --animate-slide-up: slide-up 0.3s ease-out;
+  --animate-slide-down: slide-down 0.3s ease-out;
+  --animate-fade-in: fade-in 0.3s ease-out;
+  --animate-scale-in: scale-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-down {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@layer base {
+  body {
+    font-family: "Noto Sans JP", "DM Sans", sans-serif;
+    background-color: var(--color-bg);
+    color: #0F172A;
+    -webkit-font-smoothing: antialiased;
+  }
+}

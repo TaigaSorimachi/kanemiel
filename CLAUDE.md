@@ -125,9 +125,9 @@ function calculateSignal(balance: number, dangerLine: number): 'green' | 'yellow
 - [x] プロトタイプ（HTML）作成
 - [x] ブランドデザイン確定（ネイビー×ゴールド）
 - [x] GitHub リポジトリ作成
-- [ ] Phase 0: プロジェクト基盤構築 ← **次のステップ**
-- [ ] Phase 1-A: データベース基盤
-- [ ] Phase 1-B: バックエンド API
-- [ ] Phase 1-C: フロントエンド
-- [ ] Phase 1-D: LINE 連携
-- [ ] Phase 1-E: テスト・デプロイ
+- [x] Phase 0: プロジェクト基盤構築
+- [ ] Phase 1-A: データベース基盤（スキーマ定義済み、マイグレーション未実行）
+- [x] Phase 1-B: バックエンド API
+- [x] Phase 1-C: フロントエンド（全5画面 + デモデータ付き）
+- [x] Phase 1-D: LINE 連携
+- [x] Phase 1-E: テスト・デプロイ
